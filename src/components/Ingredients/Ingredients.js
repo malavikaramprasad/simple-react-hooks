@@ -1,19 +1,38 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import IngredientList from './IngredientList';
 import IngredientForm from './IngredientForm';
 import Search from './Search';
 
 const Ingredients = () => {
   const [ingredients, setIngredients] = useState([]);
-
+  
+  // By default useEffect gets executed after every component render cycle or whenever this gets re-rendered.
+  // The funtion passed to useEffect gets executed
+  // useEffects with second arguement as [] ats as componentDidMount
+  // The second arguement will control when to run useEffect. Only when the dependent changes, it will execute
+  useEffect(() => {
+    fetch("https://react-hooks-update-3673e.firebaseio.com/ingredients.json")
+      .then(response => { return response.json() })
+      .then(responseData => {
+        const ingredients = [];
+        for (const key in responseData) {
+          ingredients.push({
+            id: key,
+            title: responseData[key].title,
+            amount: responseData[key].amount
+          })
+        }
+        setIngredients(ingredients);
+      })
+  }, []);
+  
   const addIngredient = (newIngredients) => {
     fetch("https://react-hooks-update-3673e.firebaseio.com/ingredients.json", {
       method: "POST",
-      body: JSON.stringify({ newIngredients}),
+      body: JSON.stringify(newIngredients),
       headers: { 'Content-Type': 'application/json' }
-    }).then(response => {
-      return response.json();
-    }).then(responseData => {
+    }).then(response => { return response.json();})
+    .then(responseData => {
         setIngredients(prevIngredients =>
           [...prevIngredients, { id: responseData.name, ...newIngredients }]
         );
