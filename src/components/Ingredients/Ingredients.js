@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import IngredientList from './IngredientList';
 import IngredientForm from './IngredientForm';
 import Search from './Search';
@@ -10,21 +10,23 @@ const Ingredients = () => {
   // The funtion passed to useEffect gets executed
   // useEffects with second arguement as [] ats as componentDidMount
   // The second arguement will control when to run useEffect. Only when the dependent changes, it will execute
-  useEffect(() => {
-    fetch("https://react-hooks-update-3673e.firebaseio.com/ingredients.json")
-      .then(response => { return response.json() })
-      .then(responseData => {
-        const ingredients = [];
-        for (const key in responseData) {
-          ingredients.push({
-            id: key,
-            title: responseData[key].title,
-            amount: responseData[key].amount
-          })
-        }
-        setIngredients(ingredients);
-      })
-  }, []);
+  // Commenting down below since we are making a request in Search.js. (Don't want redundant calls)
+  
+  // useEffect(() => {
+  //   fetch("https://react-hooks-update-3673e.firebaseio.com/ingredients.json")
+  //     .then(response => { return response.json() })
+  //     .then(responseData => {
+  //       const ingredients = [];
+  //       for (const key in responseData) {
+  //         ingredients.push({
+  //           id: key,
+  //           title: responseData[key].title,
+  //           amount: responseData[key].amount
+  //         })
+  //       }
+  //       setIngredients(ingredients);
+  //     })
+  // }, []);
   
   const addIngredient = (newIngredients) => {
     fetch("https://react-hooks-update-3673e.firebaseio.com/ingredients.json", {
@@ -40,17 +42,24 @@ const Ingredients = () => {
   }
 
   const removeIngredient = (ingredientId) => {
-    setIngredients(prevIngredients => 
-      prevIngredients.filter((ingredient) => ingredient.id !== ingredientId)
-    );
+    fetch(`https://react-hooks-update-3673e.firebaseio.com/ingredients/${ingredientId}.json`, {method: 'DELETE'})
+      .then(response => { 
+          setIngredients(prevIngredients =>
+            prevIngredients.filter((ingredient) => ingredient.id !== ingredientId)
+          );
+      });
   }
+
+  const onFilterIngredient = useCallback(filteredIngredients => {
+    setIngredients(filteredIngredients);
+  }, []);
 
   return (
     <div className="App">
       <IngredientForm onAddIngredient={addIngredient} />
 
       <section>
-        <Search />
+        <Search onFilterIngredient={onFilterIngredient}/>
         {/* Need to add list here! */}
         <IngredientList ingredients={ingredients} onRemoveItem={removeIngredient} />
       </section>
