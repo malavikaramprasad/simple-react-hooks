@@ -1,13 +1,40 @@
-import React, { useState, useCallback } from 'react';
+import React, { useReducer, useCallback } from 'react';
 import IngredientList from './IngredientList';
 import IngredientForm from './IngredientForm';
 import Search from './Search';
 import ErrorModal from '../UI/ErrorModal';
 
+const ingredientReducer = (currIngredients, action) => {
+  switch(action.type) {
+    case 'SET':
+      return action.ingredients;
+    case 'ADD':
+      return [...currIngredients, action.ingredient]
+    case 'DELETE':
+      return currIngredients.filter(ingredient => ingredient.id !== action.id); 
+    default:
+      throw new Error("In default case");
+  }
+}
+
+const httpReducer = (httpState, action) => {
+  switch(action.type) {
+    case 'SEND_REQUEST':
+      return { loading: true, error: null };
+    case 'RESPONSE':
+      return { ...httpState, loading: false };
+    case 'ERROR':
+      return { loading: false, error: action.error };
+    case 'CLEAR':
+      return { ...httpState, error: null};
+    default: 
+      throw new Error("In default case");  
+  }
+}
+
 const Ingredients = () => {
-  const [ingredients, setIngredients] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState();
+  const [ingredients, dispatch] = useReducer(ingredientReducer, [])
+  const [httpState, dispatchHttp] = useReducer(httpReducer, {loading: false, error: null})
   
   // By default useEffect gets executed after every component render cycle or whenever this gets re-rendered.
   // The funtion passed to useEffect gets executed
@@ -32,51 +59,47 @@ const Ingredients = () => {
   // }, []);
   
   const addIngredient = (newIngredients) => {
-    setIsLoading(true);
+    dispatchHttp({ type: 'SEND_REQUEST'});
     fetch("https://react-hooks-update-3673e.firebaseio.com/ingredients.json", {
       method: "POST",
       body: JSON.stringify(newIngredients),
       headers: { 'Content-Type': 'application/json' }
     }).then(response => {
-        setIsLoading(false);
+      dispatchHttp({ type: 'RESPONSE' });
         return response.json();
     })
     .then(responseData => {
-        setIngredients(prevIngredients =>
-          [...prevIngredients, { id: responseData.name, ...newIngredients }]
-        );
+        dispatch({ type: 'ADD', ingredient: { id: responseData.name, ...newIngredients } })
     })
     .catch(error => {
-      setError('Something went wrong');
+      dispatchHttp({ type: 'ERROR', error:'Something went wrong'});
     });
   }
 
   const removeIngredient = (ingredientId) => {
-    setIsLoading(true);
+    dispatchHttp({ type: 'SEND_REQUEST' });
     fetch(`https://react-hooks-update-3673e.firebaseio.com/ingredients/${ingredientId}.json`, {method: 'DELETE'})
       .then(response => { 
-        setIsLoading(false);
-          setIngredients(prevIngredients =>
-            prevIngredients.filter((ingredient) => ingredient.id !== ingredientId)
-          );
+        dispatchHttp({ type: 'RESPONSE' });
+        dispatch({ type: 'DELETE', id: ingredientId})
       })
       .catch(error => {
-        setError('Something went wrong');
+        dispatchHttp({ type: 'ERROR', error: 'Something went wrong' });
       });
   }
 
   const onFilterIngredient = useCallback(filteredIngredients => {
-    setIngredients(filteredIngredients);
+    dispatch({ type: 'SET', ingredients: filteredIngredients});
   }, []);
 
   const clearError = () => {
-    setError(null);
-    setIsLoading(false)
+    dispatchHttp({ type: 'CLEAR' });
+
   }
   return (
     <div className="App">
-      {error && <ErrorModal onClose={clearError}> {error} </ErrorModal>}
-      <IngredientForm onAddIngredient={addIngredient} loading={isLoading}/>
+      {httpState.error && <ErrorModal onClose={clearError}> {httpState.error} </ErrorModal>}
+      <IngredientForm onAddIngredient={addIngredient} loading={httpState.loading}/>
 
       <section>
         <Search onFilterIngredient={onFilterIngredient}/>
